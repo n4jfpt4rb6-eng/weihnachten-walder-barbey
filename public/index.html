@@ -188,7 +188,8 @@ p { margin: 0; }
   padding-top: 6px;
   justify-content: center;
 }
-.hero-tree { flex: 0 0 auto; width: 70px; height: 88px; }
+.tree { position: relative; flex: 0 0 auto; width: 70px; height: 88px; }
+.hero-tree { display: block; width: 100%; height: 100%; }
 .hero-copy { flex: 0 1 auto; min-width: 0; text-align: center; }
 h1 {
   font-family: var(--font-display);
@@ -230,7 +231,7 @@ h2.starred {
   height: 10px;
   background: repeating-linear-gradient(135deg, var(--red) 0 14px, var(--stripe-white) 14px 28px);
 }
-.letter h2 { font-size: 1.9rem; line-height: 1.1; margin-bottom: 6px; }
+.letter h2 { font-size: 1.9rem; line-height: 1.1; margin-bottom: 6px; padding-right: 64px; }
 .letter .hint { color: var(--muted); font-size: 1.05rem; margin-bottom: 18px; }
 .field { display: grid; gap: 6px; margin-bottom: 16px; }
 label, legend { font-weight: 700; font-size: 1.1rem; }
@@ -458,12 +459,86 @@ select {
 
 footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-block: 0 36px; }
 
+/* ---------- Deko ---------- */
+.gifts {
+  position: absolute;
+  left: 4%; right: 4%; bottom: 1px;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  align-content: flex-start;
+}
+.gift {
+  position: relative;
+  width: 22%;
+  aspect-ratio: 1;
+  margin: 0 1%;
+  border-radius: 2px;
+  background: var(--g);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+}
+.gift:nth-child(3n) { width: 26%; }
+.gift::before { content: ""; position: absolute; left: 42%; width: 16%; top: 0; bottom: 0; background: var(--r); }
+.gift::after { content: ""; position: absolute; top: 42%; height: 16%; left: 0; right: 0; background: var(--r); }
+.g0 { --g: #D6283A; --r: #F6D87F; }
+.g1 { --g: #F6D87F; --r: #D6283A; }
+.g2 { --g: #2E8F5C; --r: #FFFFFF; }
+.g3 { --g: #3F7FD0; --r: #F6D87F; }
+.g4 { --g: #FFFFFF; --r: #D6283A; }
+.gift.is-new { animation: pop .5s cubic-bezier(.2, .8, .3, 1.4); }
+@keyframes pop {
+  from { opacity: 0; transform: scale(.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.snowcap {
+  position: absolute;
+  left: -4px; right: -4px; top: -13px;
+  height: 18px;
+  z-index: 1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 20'%3E %3Cpath d='M0 20V11Q4 3 9 9Q14 -1 20 8Q26 0 31 8Q36 3 40 9Q42 7 44 11V20Z' fill='%23FFFFFF'/%3E %3Cpath d='M0 20V15Q11 12 22 15T44 15V20Z' fill='%23DCE9F5'/%3E %3C/svg%3E") repeat-x left top / 44px 18px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25));
+}
+.bauble { z-index: 2; }
+
+.sleigh {
+  position: absolute;
+  top: 50px; left: 0;
+  width: 130px; height: 39px;
+  pointer-events: none;
+  transform: translateX(-160px);
+  animation: fly 55s linear 5s infinite;
+}
+.sleigh svg { display: block; width: 100%; height: 100%; animation: bob 1.1s ease-in-out infinite; }
+@keyframes fly {
+  0% { transform: translateX(-160px); }
+  22% { transform: translateX(calc(100vw + 40px)); }
+  100% { transform: translateX(calc(100vw + 40px)); }
+}
+@keyframes bob { 50% { transform: translateY(-3px); } }
+
+.deco-holly {
+  position: absolute;
+  top: 12px; right: 0;
+  width: 92px; height: 62px;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 92 62'%3E %3Cpath d='M90 4C72 0 48 12 36 34C58 36 80 28 90 4Z' fill='%232E8F5C' stroke='%231B5C43' stroke-width='1.6' stroke-linejoin='round'/%3E %3Cpath d='M88 6C70 12 54 22 40 33' stroke='%231B5C43' stroke-width='1.3' fill='none'/%3E %3Cpath d='M92 20C82 34 64 46 54 60C74 58 90 44 92 20Z' fill='%232A7F52' stroke='%231B5C43' stroke-width='1.6' stroke-linejoin='round'/%3E %3Cpath d='M91 24C80 36 68 48 58 58' stroke='%231B5C43' stroke-width='1.3' fill='none'/%3E %3Cg stroke='%238E1522' stroke-width='1'%3E%3Ccircle cx='72' cy='24' r='5' fill='%23D6283A'/%3E%3Ccircle cx='81' cy='27' r='5' fill='%23D6283A'/%3E%3Ccircle cx='76' cy='33' r='5' fill='%23D6283A'/%3E%3C/g%3E %3Cg fill='%23fff' opacity='.55'%3E%3Ccircle cx='70.5' cy='22.5' r='1.3'/%3E%3Ccircle cx='79.5' cy='25.5' r='1.3'/%3E%3Ccircle cx='74.5' cy='31.5' r='1.3'/%3E%3C/g%3E %3C/svg%3E") no-repeat right top / contain;
+}
+.deco-foot {
+  height: 56px;
+  margin: 12px -22px -22px;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 54'%3E %3Cpath d='M2 50Q34 46 62 24' stroke='%236B8E3A' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E %3Cg fill='%238DBF6A' stroke='%235E8A3A' stroke-width='1'%3E %3Cellipse cx='16' cy='42' rx='11' ry='4.4' transform='rotate(-28 16 42)'/%3E %3Cellipse cx='14' cy='50' rx='11' ry='4.4' transform='rotate(8 14 50)'/%3E %3Cellipse cx='36' cy='34' rx='11' ry='4.4' transform='rotate(-46 36 34)'/%3E %3Cellipse cx='42' cy='44' rx='11' ry='4.4' transform='rotate(-8 42 44)'/%3E %3Cellipse cx='56' cy='20' rx='10' ry='4' transform='rotate(-64 56 20)'/%3E %3Cellipse cx='66' cy='28' rx='10' ry='4' transform='rotate(-22 66 28)'/%3E %3C/g%3E %3Cg fill='%23FFF8EC' stroke='%23C9D8B4' stroke-width='1'%3E%3Ccircle cx='28' cy='41' r='3.4'/%3E%3Ccircle cx='32' cy='47' r='3.4'/%3E%3Ccircle cx='24' cy='47' r='3.4'/%3E%3Ccircle cx='50' cy='30' r='3.2'/%3E%3Ccircle cx='55' cy='35' r='3.2'/%3E%3C/g%3E %3Cpath d='M2 50l-2 4 7-1z' fill='%23D6283A'/%3E %3C/svg%3E") no-repeat left bottom / auto 52px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .lights span, .tag.is-new { animation: none; }
+  .lights span, .tag.is-new, .gift.is-new, .sleigh svg { animation: none; }
+  .sleigh { display: none; }
 }
 @media (max-width: 520px) {
   .lights span:nth-child(even) { display: none; }
-  .hero-tree { width: 48px; height: 60px; }
+  .tree { width: 48px; height: 60px; }
   .hero-inner { gap: 0 12px; }
 }
 
@@ -491,14 +566,40 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
 
 <header class="hero">
   <canvas id="snow" aria-hidden="true"></canvas>
+  <div class="sleigh" aria-hidden="true">
+    <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <g id="deer">
+          <path d="M122 30L134 22" stroke="#C98B5A" stroke-width="7" stroke-linecap="round"/>
+          <ellipse cx="112" cy="34" rx="15" ry="8" fill="#C98B5A"/>
+          <ellipse cx="139" cy="20" rx="6.5" ry="4.5" fill="#C98B5A"/>
+          <circle cx="145" cy="21" r="2" fill="#4A2A18"/>
+          <circle cx="97" cy="31" r="3" fill="#E8C9A0"/>
+          <path d="M136 16L134 8M134 8L130 5M134 8L136 4" stroke="#F0D9B5" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+          <path d="M101 40L95 52M107 41L108 53M118 41L124 52M124 38L131 48" stroke="#A8693F" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+        </g>
+      </defs>
+      <path d="M4 56H66Q74 56 74 46" stroke="#F6D87F" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <path d="M20 50V56M52 50V56" stroke="#F6D87F" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M10 32H60Q70 32 68 42Q64 50 54 50H18Q8 50 8 40Q8 32 10 32Z" fill="#C62F3A"/>
+      <path d="M12 40H64" stroke="#F6D87F" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14 32Q16 14 30 16Q42 18 40 32Z" fill="#A8723D"/>
+      <rect x="40" y="22" width="12" height="10" fill="#2E8F5C"/>
+      <path d="M46 22V32M40 27H52" stroke="#F6D87F" stroke-width="1.5"/>
+      <path d="M68 36H92" stroke="#F6D87F" stroke-width="1.2"/>
+      <use href="#deer"/>
+      <use href="#deer" transform="translate(50 -2)"/>
+      <circle cx="195" cy="19" r="2.6" fill="#FF4D57"/>
+    </svg>
+  </div>
   <div class="lights" id="lights" aria-hidden="true"></div>
   <div class="gutter">
     <div class="hero-inner">
-      <svg class="hero-tree" aria-hidden="true"><use href="#tree"/></svg>
+      <div class="tree"><svg class="hero-tree" aria-hidden="true"><use href="#tree"/></svg><div class="gifts" id="giftsL" aria-hidden="true"></div></div>
       <div class="hero-copy">
         <h1>Weihnachten 2026</h1>
       </div>
-      <svg class="hero-tree hero-tree-r" aria-hidden="true"><use href="#tree"/></svg>
+      <div class="tree"><svg class="hero-tree" aria-hidden="true"><use href="#tree"/></svg><div class="gifts" id="giftsR" aria-hidden="true"></div></div>
     </div>
   </div>
   <svg class="drift" viewBox="0 0 1200 16" preserveAspectRatio="none" aria-hidden="true"><path d="M0 16V8Q25 0 50 8T100 8T150 8T200 8T250 8T300 8T350 8T400 8T450 8T500 8T550 8T600 8T650 8T700 8T750 8T800 8T850 8T900 8T950 8T1000 8T1050 8T1100 8T1150 8T1200 8V16Z"/></svg>
@@ -507,6 +608,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
 <main class="gutter">
   <div class="layout">
     <section class="letter" aria-labelledby="form-title">
+      <div class="deco-holly" aria-hidden="true"></div>
       <h2 id="form-title" class="starred">Dein Wunsch ans Christchindli</h2>
       <p class="hint">Schreib die Details gleich dazu, zum Beispiel Grösse, Farbe oder Marke.</p>
       <form id="form" autocomplete="off">
@@ -535,6 +637,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
         <button class="send" id="send" type="submit">Wunsch aufhängen</button>
       </form>
       <p class="note" id="note" role="status" aria-live="polite" hidden></p>
+      <div class="deco-foot" aria-hidden="true"></div>
     </section>
 
     <section aria-labelledby="board-title">
@@ -621,6 +724,24 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
   var personSel = $('personFilter'), openChk = $('openOnly'), filters = $('filters'), nomatch = $('nomatch');
   var filterPerson = '', openOnly = false, optSig = '', lastJson = '';
   var wishes = [], seen = {}, firstLoad = true, loadFailed = false;
+  var giftsL = $('giftsL'), giftsR = $('giftsR'), giftCount = -1;
+  function fillGifts(box, count, offset, firstNew) {
+    box.textContent = '';
+    for (var k = 0; k < count; k++) {
+      var idx = 2 * k + offset;
+      var g = document.createElement('div');
+      g.className = 'gift g' + (idx % 5) + (firstNew >= 0 && idx >= firstNew ? ' is-new' : '');
+      box.appendChild(g);
+    }
+  }
+  function renderGifts(total) {
+    if (total === giftCount) return;
+    var n = Math.min(total, 16);
+    var firstNew = (giftCount >= 0 && total > giftCount) ? Math.min(giftCount, 16) : -1;
+    giftCount = total;
+    fillGifts(giftsL, Math.ceil(n / 2), 0, firstNew);
+    fillGifts(giftsR, Math.floor(n / 2), 1, firstNew);
+  }
   var kindLabels = { herz: 'Herzenswunsch', schoen: 'Wäre schön', klein: 'Kleinigkeit' };
 
 
@@ -682,6 +803,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
   openChk.addEventListener('change', function () { openOnly = openChk.checked; render(); });
 
   function render() {
+    renderGifts(wishes.length);
     list.textContent = '';
     empty.hidden = wishes.length > 0;
     var np = updateFilterOptions();
@@ -704,6 +826,9 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
       bauble.className = 'bauble b' + (1 + Math.floor(h / 4) % 6);
       bauble.setAttribute('aria-hidden', 'true');
       li.appendChild(bauble);
+      var cap = document.createElement('div');
+      cap.className = 'snowcap'; cap.setAttribute('aria-hidden', 'true');
+      li.appendChild(cap);
 
       if (kindLabels[w.kind]) {
         var kind = document.createElement('div');
