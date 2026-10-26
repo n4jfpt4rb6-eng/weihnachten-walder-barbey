@@ -37,7 +37,7 @@ function normalizeLink(value) {
   return u.href.length <= 500 ? u.href : null;
 }
 
-const publicWish = (w) => ({ id: w.id, name: w.name, text: w.text, kind: w.kind, link: w.link || '', createdAt: w.createdAt });
+const publicWish = (w) => ({ id: w.id, name: w.name, text: w.text, kind: w.kind, link: w.link || '', wrapped: Boolean(w.wrapped), createdAt: w.createdAt });
 
 /**
  * wishesStore / limitsStore: Netlify-Blobs-Speicher (get, setJSON, list, delete).
@@ -125,6 +125,25 @@ export function createHandler({ wishesStore, limitsStore }) {
         await wishesStore.delete(id);
         await addHit(key);
         return json(200, { ok: true });
+      }
+
+      /* Markierung «Schon eingepackt» setzen oder zurücknehmen */
+      if (m && req.method === 'PATCH') {
+        const id = m[1];
+        if (!ID_RE.test(id)) return json(404, { error: 'nicht_gefunden' });
+        const key = limitKey('mark', ip);
+        if (await isLimited(key, 60)) return json(429, { error: 'zu_schnell' });
+        const raw = await req.text();
+        if (raw.length > MAX_BODY) return json(413, { error: 'zu_gross' });
+        let body;
+        try { body = JSON.parse(raw || '{}'); } catch (_) { return json(400, { error: 'ungueltig' }); }
+        if (typeof body.wrapped !== 'boolean') return json(400, { error: 'ungueltig' });
+        const wish = await wishesStore.get(id, { type: 'json' });
+        if (!wish) return json(404, { error: 'nicht_gefunden' });
+        if (body.wrapped) wish.wrapped = true; else delete wish.wrapped;
+        await wishesStore.setJSON(id, wish);
+        await addHit(key);
+        return json(200, { wish: publicWish(wish) });
       }
 
       return json(404, { error: 'nicht_gefunden' });
