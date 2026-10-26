@@ -297,6 +297,21 @@ input:disabled, textarea:disabled { opacity: .6; }
 .board-head h2 { font-size: 2.1rem; line-height: 1.1; }
 .stats { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
 
+.sr { position: absolute; left: -9999px; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin: -14px 0 32px; }
+.filters[hidden] { display: none; }
+select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--field);
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: .5rem .8rem;
+  max-width: 100%;
+}
+.chk { display: inline-flex; align-items: center; gap: 8px; font-size: 1.1rem; cursor: pointer; }
+.chk input { width: 20px; height: 20px; margin: 0; accent-color: var(--red); }
+.nomatch { color: var(--muted); font-size: 1.15rem; margin-bottom: 20px; }
 .wishes {
   list-style: none;
   margin: 0;
@@ -385,13 +400,15 @@ input:disabled, textarea:disabled { opacity: .6; }
 }
 .meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   font-size: .98rem;
   opacity: .92;
 }
-.del {
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.del, .wrapbtn {
   font: inherit;
   font-size: .92rem;
   font-weight: 700;
@@ -403,6 +420,22 @@ input:disabled, textarea:disabled { opacity: .6; }
   cursor: pointer;
 }
 .tag :focus-visible { outline-color: currentColor; }
+.wrapstamp {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-9deg);
+  padding: .05rem .9rem;
+  border: 4px double var(--tag-green);
+  border-radius: 8px;
+  background: rgba(255, 250, 240, .86);
+  color: var(--tag-green);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.is-wrapped .who, .is-wrapped .what, .is-wrapped .kind, .is-wrapped .wishlink { opacity: .5; }
 .tag.is-new { animation: hang .6s cubic-bezier(.2, .8, .3, 1.2); }
 @keyframes hang {
   from { opacity: 0; transform: translateY(-18px) rotate(calc(var(--tilt, 0deg) * -4)); }
@@ -509,6 +542,12 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
         <h2 id="board-title" class="starred">Am Baum hängen</h2>
         <p class="stats" id="stats"></p>
       </div>
+      <div class="filters" id="filters" hidden>
+        <label class="sr" for="personFilter">Wünsche von</label>
+        <select id="personFilter"><option value="">Alle Personen</option></select>
+        <label class="chk"><input type="checkbox" id="openOnly"><span>Nur noch offene</span></label>
+      </div>
+      <p class="nomatch" id="nomatch" hidden>Mit diesem Filter hängt nichts am Baum.</p>
       <div class="empty" id="empty">
         <svg aria-hidden="true"><use href="#tree"/></svg>
         <p><strong>Noch hängt nichts am Baum.</strong>Schreib den ersten Wunsch links ins Formular. Er erscheint hier sofort für alle.</p>
@@ -579,6 +618,8 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
   /* Wünsche */
   var list = $('list'), empty = $('empty'), stats = $('stats'), note = $('note');
   var form = $('form'), nameIn = $('name'), wishIn = $('wish'), linkIn = $('link'), sendBtn = $('send'), countEl = $('count'), hp = $('website');
+  var personSel = $('personFilter'), openChk = $('openOnly'), filters = $('filters'), nomatch = $('nomatch');
+  var filterPerson = '', openOnly = false, optSig = '', lastJson = '';
   var wishes = [], seen = {}, firstLoad = true, loadFailed = false;
   var kindLabels = { herz: 'Herzenswunsch', schoen: 'Wäre schön', klein: 'Kleinigkeit' };
 
@@ -611,19 +652,52 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
       });
   }
 
+  function personKey(n) { return n.trim().toLowerCase(); }
+  function updateFilterOptions() {
+    var people = {};
+    wishes.forEach(function (w) {
+      var k = personKey(w.name);
+      if (!people[k]) people[k] = { name: w.name.trim(), n: 0 };
+      people[k].n++;
+    });
+    var keys = Object.keys(people).sort(function (a, b) { return people[a].name.localeCompare(people[b].name, 'de'); });
+    if (filterPerson && !people[filterPerson]) filterPerson = '';
+    var sig = keys.map(function (k) { return k + ':' + people[k].n; }).join('|') + '#' + wishes.length;
+    if (sig !== optSig) {
+      optSig = sig;
+      personSel.textContent = '';
+      var all = document.createElement('option');
+      all.value = ''; all.textContent = 'Alle Personen (' + wishes.length + ')';
+      personSel.appendChild(all);
+      keys.forEach(function (k) {
+        var o = document.createElement('option');
+        o.value = k; o.textContent = people[k].name + ' (' + people[k].n + ')';
+        personSel.appendChild(o);
+      });
+    }
+    personSel.value = filterPerson;
+    return keys.length;
+  }
+  personSel.addEventListener('change', function () { filterPerson = personSel.value; render(); });
+  openChk.addEventListener('change', function () { openOnly = openChk.checked; render(); });
+
   function render() {
     list.textContent = '';
     empty.hidden = wishes.length > 0;
-    var people = {};
-    wishes.forEach(function (w) { people[w.name.trim().toLowerCase()] = 1; });
-    var np = Object.keys(people).length;
-    stats.textContent = wishes.length
-      ? wishes.length + (wishes.length === 1 ? ' Wunsch von ' : ' Wünsche von ') + np + (np === 1 ? ' Person' : ' Personen')
-      : '';
-    wishes.forEach(function (w) {
+    var np = updateFilterOptions();
+    filters.hidden = wishes.length === 0;
+    var visible = wishes.filter(function (w) {
+      return (!filterPerson || personKey(w.name) === filterPerson) && (!openOnly || !w.wrapped);
+    });
+    nomatch.hidden = wishes.length === 0 || visible.length > 0;
+    var filtered = Boolean(filterPerson) || openOnly;
+    stats.textContent = !wishes.length ? '' : filtered
+      ? visible.length + ' von ' + wishes.length + (wishes.length === 1 ? ' Wunsch' : ' Wünschen')
+      : wishes.length + (wishes.length === 1 ? ' Wunsch von ' : ' Wünsche von ') + np + (np === 1 ? ' Person' : ' Personen');
+    visible.forEach(function (w) {
       var li = document.createElement('li');
       var h = hash(w.id);
-      li.className = 'tag' + (!firstLoad && !seen[w.id] ? ' is-new' : '');
+      li.className = 'tag' + (w.wrapped ? ' is-wrapped' : '') + (!firstLoad && !seen[w.id] ? ' is-new' : '');
       li.style.setProperty('--tilt', (((h % 5) - 2) * 0.7) + 'deg');
 
       var bauble = document.createElement('div');
@@ -646,9 +720,30 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
         li.appendChild(a);
       }
 
+      if (w.wrapped) {
+        var stamp = document.createElement('div');
+        stamp.className = 'wrapstamp'; stamp.textContent = 'Schon eingepackt';
+        li.appendChild(stamp);
+      }
       var meta = document.createElement('div'); meta.className = 'meta';
       var date = document.createElement('span'); date.textContent = w.createdAt ? fmtDate(w.createdAt) : '';
       meta.appendChild(date);
+      var actions = document.createElement('div'); actions.className = 'actions';
+      meta.appendChild(actions);
+
+      var wrapBtn = document.createElement('button');
+      wrapBtn.type = 'button'; wrapBtn.className = 'wrapbtn';
+      wrapBtn.textContent = w.wrapped ? 'Rückgängig' : 'Schon eingepackt?';
+      wrapBtn.addEventListener('click', function () {
+        wrapBtn.disabled = true;
+        api('PATCH', '/api/wishes/' + w.id, { wrapped: !w.wrapped }).then(function () {
+          return load();
+        }).catch(function () {
+          wrapBtn.disabled = false;
+          showNote('Das hat nicht geklappt. Versuch es gleich noch einmal.', true);
+        });
+      });
+      actions.appendChild(wrapBtn);
 
       var del = document.createElement('button');
       del.type = 'button'; del.className = 'del'; del.textContent = 'Löschen';
@@ -667,7 +762,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
           showNote(err.status === 429 ? 'Das ging zu schnell. Warte einen Moment.' : 'Der Wunsch konnte nicht gelöscht werden.', true);
         });
       });
-      meta.appendChild(del);
+      actions.appendChild(del);
       li.appendChild(meta);
       list.appendChild(li);
     });
@@ -679,7 +774,8 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
     return api('GET', '/api/wishes').then(function (j) {
       wishes = (j.wishes || []).filter(function (w) { return w && w.id && w.name && w.text; });
       if (loadFailed) { loadFailed = false; showNote('', false); }
-      render();
+      var js = JSON.stringify(wishes);
+      if (js !== lastJson) { lastJson = js; render(); }
     }).catch(function () {
       if (!loadFailed) { loadFailed = true; showNote('Die Wünsche können gerade nicht geladen werden.', true); }
     });
