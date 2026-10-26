@@ -9,7 +9,6 @@ const WINDOW_MS = 10 * 60 * 1000;
 const ID_RE = /^\d{13}-[a-f0-9]{16}$/;
 
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
-const safeEqual = (a, b) => crypto.timingSafeEqual(sha(a), sha(b));
 
 const json = (status, obj) =>
   new Response(JSON.stringify(obj), {
@@ -29,9 +28,8 @@ const publicWish = (w) => ({ id: w.id, name: w.name, text: w.text, kind: w.kind,
 
 /**
  * wishesStore / limitsStore: Netlify-Blobs-Speicher (get, setJSON, list, delete).
- * getAdminPassword: Funktion, die das Verwaltungs-Passwort liefert (leer = Verwaltung aus).
  */
-export function createHandler({ wishesStore, limitsStore, getAdminPassword }) {
+export function createHandler({ wishesStore, limitsStore }) {
   async function recentHits(key) {
     try {
       const v = await limitsStore.get(key, { type: 'json' });
@@ -56,12 +54,6 @@ export function createHandler({ wishesStore, limitsStore, getAdminPassword }) {
   async function allKeys() {
     const { blobs } = await wishesStore.list();
     return blobs.map((b) => b.key).filter((k) => ID_RE.test(k)).sort(); // neueste zuerst
-  }
-
-  function isAdmin(req) {
-    const pw = req.headers.get('x-admin-password');
-    const admin = getAdminPassword();
-    return Boolean(admin && pw && safeEqual(pw, admin));
   }
 
   return async function handler(req, context) {
@@ -89,7 +81,7 @@ export function createHandler({ wishesStore, limitsStore, getAdminPassword }) {
         if (raw.length > MAX_BODY) return json(413, { error: 'zu_gross' });
         let body;
         try { body = JSON.parse(raw || '{}'); } catch (_) { return json(400, { error: 'ungueltig' }); }
-        if (body.website) return json(201, { wish: { id: '0000000000000-0000000000000000' }, token: 'x' }); // Spam-Falle
+        if (body.website) return json(201, { wish: { id: '0000000000000-0000000000000000' } }); // Spam-Falle
         const name = clean(body.name, 40, false);
         const text = clean(body.text, 400, true);
         const kind = KINDS.has(body.kind) ? body.kind : 'schoen';
@@ -99,19 +91,10 @@ export function createHandler({ wishesStore, limitsStore, getAdminPassword }) {
         const createdAt = Date.now();
         const inverse = String(9999999999999 - createdAt).padStart(13, '0');
         const id = inverse + '-' + crypto.randomBytes(8).toString('hex');
-        const token = crypto.randomBytes(24).toString('hex');
-        const wish = { id, name, text, kind, createdAt, th: sha(token).toString('hex') };
+        const wish = { id, name, text, kind, createdAt };
         await wishesStore.setJSON(id, wish);
         await addHit(key);
-        return json(201, { wish: publicWish(wish), token });
-      }
-
-      /* Verwaltung prüfen */
-      if (path === '/api/admin' && req.method === 'GET') {
-        const key = limitKey('adm', ip);
-        if (await isLimited(key, 15)) return json(429, { error: 'zu_schnell' });
-        if (!isAdmin(req)) { await addHit(key); return json(401, { error: 'passwort' }); }
-        return json(200, { ok: true });
+        return json(201, { wish: publicWish(wish) });
       }
 
       /* Wunsch löschen */
@@ -119,14 +102,12 @@ export function createHandler({ wishesStore, limitsStore, getAdminPassword }) {
       if (m && req.method === 'DELETE') {
         const id = m[1];
         if (!ID_RE.test(id)) return json(404, { error: 'nicht_gefunden' });
-        const key = limitKey('adm', ip);
-        if (await isLimited(key, 15)) return json(429, { error: 'zu_schnell' });
+        const key = limitKey('del', ip);
+        if (await isLimited(key, 30)) return json(429, { error: 'zu_schnell' });
         const wish = await wishesStore.get(id, { type: 'json' });
         if (!wish) return json(404, { error: 'nicht_gefunden' });
-        const token = req.headers.get('x-delete-token');
-        const own = Boolean(token) && safeEqual(sha(token).toString('hex'), wish.th);
-        if (!own && !isAdmin(req)) { await addHit(key); return json(401, { error: 'nicht_erlaubt' }); }
         await wishesStore.delete(id);
+        await addHit(key);
         return json(200, { ok: true });
       }
 
