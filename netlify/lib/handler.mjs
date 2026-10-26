@@ -24,7 +24,20 @@ function clean(value, max, multiline) {
   return s.length > max ? s.slice(0, max) : s;
 }
 
-const publicWish = (w) => ({ id: w.id, name: w.name, text: w.text, kind: w.kind, createdAt: w.createdAt });
+// Link prüfen: nur http und https, gibt '' (kein Link), den bereinigten Link oder null (ungültig) zurück
+function normalizeLink(value) {
+  let t = String(value == null ? '' : value).replace(/[\u0000-\u001F\u007F\s]+/g, '');
+  if (!t) return '';
+  if (t.length > 500) return null;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(t)) t = 'https://' + t;
+  let u;
+  try { u = new URL(t); } catch (_) { return null; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  if (!u.hostname.includes('.')) return null;
+  return u.href.length <= 500 ? u.href : null;
+}
+
+const publicWish = (w) => ({ id: w.id, name: w.name, text: w.text, kind: w.kind, link: w.link || '', createdAt: w.createdAt });
 
 /**
  * wishesStore / limitsStore: Netlify-Blobs-Speicher (get, setJSON, list, delete).
@@ -86,12 +99,15 @@ export function createHandler({ wishesStore, limitsStore }) {
         const text = clean(body.text, 400, true);
         const kind = KINDS.has(body.kind) ? body.kind : 'schoen';
         if (!name || text.length < 2) return json(400, { error: 'ungueltig' });
+        const link = normalizeLink(body.link);
+        if (link === null) return json(400, { error: 'link_ungueltig' });
         if ((await allKeys()).length >= MAX_WISHES) return json(507, { error: 'voll' });
 
         const createdAt = Date.now();
         const inverse = String(9999999999999 - createdAt).padStart(13, '0');
         const id = inverse + '-' + crypto.randomBytes(8).toString('hex');
         const wish = { id, name, text, kind, createdAt };
+        if (link) wish.link = link;
         await wishesStore.setJSON(id, wish);
         await addHit(key);
         return json(201, { wish: publicWish(wish) });
