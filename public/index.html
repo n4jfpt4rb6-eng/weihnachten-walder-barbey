@@ -375,6 +375,14 @@ input:disabled, textarea:disabled { opacity: .6; }
   overflow-wrap: anywhere;
   flex: 1;
 }
+.wishlink {
+  align-self: flex-start;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--tag-red);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .meta {
   display: flex;
   align-items: center;
@@ -478,6 +486,10 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
           <textarea id="wish" maxlength="400" required placeholder="z. B. Ein dicker Wollschal, Grösse M, dunkelgrün, reine Wolle"></textarea>
           <span class="count" id="count">0 / 400</span>
         </div>
+        <div class="field">
+          <label for="link">Link (freiwillig)</label>
+          <input id="link" type="text" inputmode="url" maxlength="500" placeholder="z. B. https://www.beispiel.ch/schal">
+        </div>
         <fieldset>
           <legend>Wie wichtig ist er dir?</legend>
           <div class="kinds">
@@ -566,7 +578,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
 
   /* Wünsche */
   var list = $('list'), empty = $('empty'), stats = $('stats'), note = $('note');
-  var form = $('form'), nameIn = $('name'), wishIn = $('wish'), sendBtn = $('send'), countEl = $('count'), hp = $('website');
+  var form = $('form'), nameIn = $('name'), wishIn = $('wish'), linkIn = $('link'), sendBtn = $('send'), countEl = $('count'), hp = $('website');
   var wishes = [], seen = {}, firstLoad = true, loadFailed = false;
   var kindLabels = { herz: 'Herzenswunsch', schoen: 'Wäre schön', klein: 'Kleinigkeit' };
 
@@ -627,6 +639,12 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
       var who = document.createElement('div'); who.className = 'who'; who.textContent = 'Von ' + w.name;
       var what = document.createElement('div'); what.className = 'what'; what.textContent = w.text;
       li.appendChild(who); li.appendChild(what);
+      if (w.link && /^https?:\/\//i.test(w.link)) {
+        var a = document.createElement('a');
+        a.className = 'wishlink'; a.href = w.link; a.target = '_blank';
+        a.rel = 'noopener noreferrer nofollow'; a.textContent = 'Link';
+        li.appendChild(a);
+      }
 
       var meta = document.createElement('div'); meta.className = 'meta';
       var date = document.createElement('span'); date.textContent = w.createdAt ? fmtDate(w.createdAt) : '';
@@ -672,15 +690,16 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
     var name = nameIn.value.trim(), text = wishIn.value.trim();
     if (!name || text.length < 2) { showNote('Bitte trag deinen Namen und deinen Wunsch ein.', true); return; }
     sendBtn.disabled = true;
-    api('POST', '/api/wishes', { name: name, text: text, kind: getKind(), website: hp.value }).then(function (j) {
+    api('POST', '/api/wishes', { name: name, text: text, kind: getKind(), link: linkIn.value.trim(), website: hp.value }).then(function (j) {
       try { localStorage.setItem('christchindli-name', name); } catch (e) {}
-      wishIn.value = '';
+      wishIn.value = ''; linkIn.value = '';
       var def = form.querySelector('input[name="kind"][value="schoen"]'); if (def) def.checked = true;
       updateCount();
       showNote('Dein Wunsch hängt am Baum. Frohe Weihnachten!', false);
       return load();
     }).catch(function (err) {
       if (err.status === 429) showNote('Das ging zu schnell. Warte einen Moment und versuch es dann noch einmal.', true);
+      else if (err.message === 'link_ungueltig') showNote('Bitte gib einen gültigen Link ein, zum Beispiel https://www.beispiel.ch.', true);
       else if (err.status === 400) showNote('Bitte prüfe deinen Namen und deinen Wunsch.', true);
       else if (err.status === 507) showNote('Der Wunschzettel ist voll.', true);
       else showNote('Das hat nicht geklappt. Versuch es gleich noch einmal.', true);
