@@ -149,7 +149,7 @@ export function createHandler({ wishesStore, limitsStore }) {
       return json(404, { error: 'nicht_gefunden' });
     } catch (err) {
       console.error(err);
-      return json(500, { error: 'fehler' });
+      return json(500, { error: 'fehler', detail: String((err && (err.name + ': ' + err.message)) || err) });
     }
   };
 }
