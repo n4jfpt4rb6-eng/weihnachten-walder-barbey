@@ -427,12 +427,6 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
 }
 
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-.linkbtn { font: inherit; font-size: .95rem; color: var(--muted); background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 0; }
-.adminform { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-top: 10px; }
-.adminform[hidden] { display: none; }
-input[type="password"] { width: min(100%, 220px); font: inherit; color: var(--fg); background: var(--field); border: 1.5px solid var(--line); border-radius: 8px; padding: .5rem .7rem; }
-.adminform .send { width: auto; padding: .5rem 1.1rem; font-size: 1rem; }
-.sr { position: absolute; left: -9999px; }
 </style>
 </head>
 <body>
@@ -514,13 +508,6 @@ input[type="password"] { width: min(100%, 220px); font: inherit; color: var(--fg
 
 <footer class="gutter">
   <p>Das Christchindli liest mit. Frohe Weihnachten!</p>
-  <p style="margin-top:10px"><button type="button" class="linkbtn" id="adminToggle">Verwaltung</button></p>
-  <form class="adminform" id="adminForm" hidden>
-    <label class="sr" for="adminPw">Passwort</label>
-    <input id="adminPw" type="password" autocomplete="current-password" placeholder="Passwort">
-    <button class="send" type="submit">Anmelden</button>
-    <span id="adminMsg" role="status" aria-live="polite"></span>
-  </form>
 </footer>
 
 <script>
@@ -580,16 +567,9 @@ input[type="password"] { width: min(100%, 220px); font: inherit; color: var(--fg
   /* Wünsche */
   var list = $('list'), empty = $('empty'), stats = $('stats'), note = $('note');
   var form = $('form'), nameIn = $('name'), wishIn = $('wish'), sendBtn = $('send'), countEl = $('count'), hp = $('website');
-  var adminToggle = $('adminToggle'), adminForm = $('adminForm'), adminPwIn = $('adminPw'), adminMsg = $('adminMsg');
   var wishes = [], seen = {}, firstLoad = true, loadFailed = false;
   var kindLabels = { herz: 'Herzenswunsch', schoen: 'Wäre schön', klein: 'Kleinigkeit' };
-  var TOKEN_KEY = 'christchindli-tokens', ADMIN_KEY = 'christchindli-admin';
 
-  function readTokens() { try { return JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}') || {}; } catch (e) { return {}; } }
-  var tokens = readTokens();
-  function saveTokens() { try { localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens)); } catch (e) {} }
-  var adminPw = null;
-  try { adminPw = sessionStorage.getItem(ADMIN_KEY); } catch (e) {}
 
   function hash(s) { var h = 0; for (var k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) | 0; return Math.abs(h); }
   function fmtDate(ms) {
@@ -652,29 +632,24 @@ input[type="password"] { width: min(100%, 220px); font: inherit; color: var(--fg
       var date = document.createElement('span'); date.textContent = w.createdAt ? fmtDate(w.createdAt) : '';
       meta.appendChild(date);
 
-      if (tokens[w.id] || adminPw) {
-        var del = document.createElement('button');
-        del.type = 'button'; del.className = 'del'; del.textContent = 'Löschen';
-        var armed = false, timer = 0;
-        del.addEventListener('click', function () {
-          if (!armed) {
-            armed = true; del.textContent = 'Wirklich löschen?';
-            timer = setTimeout(function () { armed = false; del.textContent = 'Löschen'; }, 4000);
-            return;
-          }
-          clearTimeout(timer); del.disabled = true;
-          var headers = tokens[w.id] ? { 'X-Delete-Token': tokens[w.id] } : { 'X-Admin-Password': adminPw };
-          api('DELETE', '/api/wishes/' + w.id, null, headers).then(function () {
-            delete tokens[w.id]; saveTokens();
-            return load();
-          }).catch(function (err) {
-            del.disabled = false; armed = false; del.textContent = 'Löschen';
-            if (err.status === 401 && !tokens[w.id]) { adminLogout(); showNote('Die Verwaltung ist abgelaufen. Bitte melde dich neu an.', true); }
-            else showNote('Der Wunsch konnte nicht gelöscht werden.', true);
-          });
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'del'; del.textContent = 'Löschen';
+      var armed = false, timer = 0;
+      del.addEventListener('click', function () {
+        if (!armed) {
+          armed = true; del.textContent = 'Wirklich löschen?';
+          timer = setTimeout(function () { armed = false; del.textContent = 'Löschen'; }, 4000);
+          return;
+        }
+        clearTimeout(timer); del.disabled = true;
+        api('DELETE', '/api/wishes/' + w.id).then(function () {
+          return load();
+        }).catch(function (err) {
+          del.disabled = false; armed = false; del.textContent = 'Löschen';
+          showNote(err.status === 429 ? 'Das ging zu schnell. Warte einen Moment.' : 'Der Wunsch konnte nicht gelöscht werden.', true);
         });
-        meta.appendChild(del);
-      }
+      });
+      meta.appendChild(del);
       li.appendChild(meta);
       list.appendChild(li);
     });
@@ -698,7 +673,6 @@ input[type="password"] { width: min(100%, 220px); font: inherit; color: var(--fg
     if (!name || text.length < 2) { showNote('Bitte trag deinen Namen und deinen Wunsch ein.', true); return; }
     sendBtn.disabled = true;
     api('POST', '/api/wishes', { name: name, text: text, kind: getKind(), website: hp.value }).then(function (j) {
-      if (j.wish && j.wish.id && j.token) { tokens[j.wish.id] = j.token; saveTokens(); }
       try { localStorage.setItem('christchindli-name', name); } catch (e) {}
       wishIn.value = '';
       var def = form.querySelector('input[name="kind"][value="schoen"]'); if (def) def.checked = true;
@@ -712,34 +686,6 @@ input[type="password"] { width: min(100%, 220px); font: inherit; color: var(--fg
       else showNote('Das hat nicht geklappt. Versuch es gleich noch einmal.', true);
     }).then(function () { sendBtn.disabled = false; });
   });
-
-  /* Verwaltung (alle Wünsche löschen) */
-  function syncAdmin() { adminToggle.textContent = adminPw ? 'Verwaltung beenden' : 'Verwaltung'; }
-  function adminLogout() {
-    adminPw = null;
-    try { sessionStorage.removeItem(ADMIN_KEY); } catch (e) {}
-    adminMsg.textContent = ''; adminForm.hidden = true;
-    syncAdmin(); render();
-  }
-  adminToggle.addEventListener('click', function () {
-    if (adminPw) { adminLogout(); return; }
-    adminForm.hidden = !adminForm.hidden;
-    if (!adminForm.hidden) adminPwIn.focus();
-  });
-  adminForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var pw = adminPwIn.value;
-    if (!pw) return;
-    api('GET', '/api/admin', null, { 'X-Admin-Password': pw }).then(function () {
-      adminPw = pw;
-      try { sessionStorage.setItem(ADMIN_KEY, pw); } catch (e) {}
-      adminPwIn.value = ''; adminForm.hidden = true; adminMsg.textContent = '';
-      syncAdmin(); render();
-    }).catch(function (err) {
-      adminMsg.textContent = err.status === 429 ? 'Zu viele Versuche. Bitte warte kurz.' : 'Falsches Passwort.';
-    });
-  });
-  syncAdmin();
 
   load();
   setInterval(function () { if (!document.hidden) load(); }, 15000);
