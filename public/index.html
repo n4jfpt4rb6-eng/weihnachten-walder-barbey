@@ -473,7 +473,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
 @keyframes bob { 50% { transform: translateY(-3px); } }
 .gifts {
   position: absolute;
-  left: 4%; right: 4%; bottom: 1px;
+  left: -35%; right: -35%; bottom: 1px;
   display: flex;
   flex-wrap: wrap-reverse;
   justify-content: center;
@@ -488,7 +488,9 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
   background: var(--g);
   box-shadow: 0 1px 0 rgba(0, 0, 0, .3);
 }
-.gift:nth-child(3n) { width: 26%; }
+.gifts[data-n="m"] .gift { width: 13%; }
+.gifts[data-n="l"] .gift { width: 8%; margin: 0 .5%; }
+.gifts[data-n="xl"] .gift { width: 5%; margin: 0 .4%; }
 .gift::before { content: ""; position: absolute; left: 42%; width: 16%; top: 0; bottom: 0; background: var(--r); }
 .gift::after { content: ""; position: absolute; top: 42%; height: 16%; left: 0; right: 0; background: var(--r); }
 .g0 { --g: #D6283A; --r: #F6D87F; }
@@ -690,12 +692,21 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
   /* Schlitten: bei jedem neuen Wunsch fliegt er durch und wirft ein Päckli unter den linken Baum */
   var sleigh = $('sleigh'), gifts = $('gifts'), treeL = $('treeL'), heroEl = document.querySelector('.hero');
   var reduceMotion = Boolean(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var sleighBusy = false, queued = 0, giftSeq = 0, SLEIGH_W = 130;
+  var sleighBusy = false, queued = 0, scheduled = 0, SLEIGH_W = 130;
+  function sizeGifts() {
+    var n = gifts.children.length;
+    gifts.setAttribute('data-n', n <= 10 ? 's' : n <= 30 ? 'm' : n <= 80 ? 'l' : 'xl');
+  }
+  function syncGifts(total) {
+    while (gifts.children.length > Math.max(0, total - scheduled)) gifts.removeChild(gifts.lastChild);
+    while (gifts.children.length + scheduled < total) addGift(false);
+    sizeGifts();
+  }
   function addGift(animated) {
     var g = document.createElement('div');
-    g.className = 'gift g' + (giftSeq++ % 5);
+    g.className = 'gift g' + (gifts.children.length % 5);
     gifts.appendChild(g);
-    while (gifts.children.length > 8) gifts.removeChild(gifts.firstChild);
+    sizeGifts();
     if (animated && g.animate) {
       g.animate([
         { transform: 'translateY(-50px) rotate(-16deg)', opacity: 0, offset: 0, easing: 'ease-in' },
@@ -707,10 +718,10 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
     }
   }
   function flySleigh(n) {
-    if (reduceMotion || !sleigh.animate) { for (var i = 0; i < n && i < 8; i++) addGift(false); return; }
-    if (sleighBusy) { queued = Math.min(queued + n, 5); return; }
+    if (reduceMotion || !sleigh.animate) { for (var i = 0; i < n; i++) addGift(false); return; }
+    scheduled += n;
+    if (sleighBusy) { queued += n; return; }
     sleighBusy = true;
-    n = Math.min(n, 5);
     var heroRect = heroEl.getBoundingClientRect(), treeRect = treeL.getBoundingClientRect();
     var treeX = treeRect.left - heroRect.left + treeRect.width / 2;
     var from = -SLEIGH_W - 20, to = heroRect.width + 20;
@@ -721,11 +732,12 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
       { transform: 'translateX(' + from + 'px)' },
       { transform: 'translateX(' + to + 'px)' }
     ], { duration: duration, easing: 'linear' });
-    for (var k = 0; k < n; k++) (function (delay) { setTimeout(function () { addGift(true); }, delay); })(dropAt + k * 450);
+    var gap = Math.min(450, 3000 / n);
+    for (var k = 0; k < n; k++) (function (delay) { setTimeout(function () { scheduled = Math.max(0, scheduled - 1); addGift(true); }, delay); })(dropAt + k * gap);
     anim.onfinish = function () {
       sleigh.classList.remove('on');
       sleighBusy = false;
-      if (queued > 0) { var q = queued; queued = 0; flySleigh(q); }
+      if (queued > 0) { var q = queued; queued = 0; scheduled -= q; flySleigh(q); }
     };
   }
 
@@ -878,6 +890,7 @@ footer { text-align: center; color: var(--muted); font-size: 1.1rem; padding-blo
     wishes.forEach(function (w) { seen[w.id] = 1; });
     firstLoad = false;
     if (newCount > 0) flySleigh(newCount);
+    syncGifts(wishes.length);
   }
 
   function load() {
