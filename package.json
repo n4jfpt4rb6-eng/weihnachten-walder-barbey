@@ -1,0 +1,10 @@
+{
+  "name": "christchindli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gemeinsamer Weihnachts-Wunschzettel, ohne Anmeldung, für Netlify",
+  "dependencies": {
+    "@netlify/blobs": ">=8.0.0"
+  }
+}
